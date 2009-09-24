@@ -1,1 +1,11 @@
-Test
+Flex Collaboration Library
+
+Requirements: You need the AFCS libraries for this code to work
+
+This is a project started by Ryan Stewart (ryan@adobe.com) to 
+add Adobe Flash Collaboration Services support to some of the 
+core Flex library classes.
+
+For more information on Adobe Flash Collaboration Services see:
+- http://labs.adobe.com/technologies/afcs/
+- http://www.adobe.com/devnet/flex/articles/afcs_gettingstarted.html 
