@@ -36,7 +36,7 @@ package afcs.collections
 	import com.adobe.rtc.sharedModel.CollectionNode;
 	
 	import mx.collections.ArrayCollection;
-	import mx.core.IUID;
+	import mx.utils.UIDUtil;
 	
 	/**
 	 * This class is meant to map directly to a single ArrayCollection.
@@ -48,11 +48,14 @@ package afcs.collections
 	 **/
 	public class SharedArrayCollection extends ArrayCollection
 	{
+		[Event(name="collectionChange",type="com.adobe.rtc.events.CollectionNodeEvent")]
+		
 		protected var _collectionNode:CollectionNode;
 		protected var _nodeConfig:NodeConfiguration;
 		protected var _myUserID:String;
 		
 		protected static var NODE_NAME:String = "nodeItems";
+		protected static var ID_FIELD:String = "itemID";
 		
 		public function SharedArrayCollection(source:Array=null)
 		{
@@ -78,6 +81,7 @@ package afcs.collections
 			_collectionNode.addEventListener(CollectionNodeEvent.SYNCHRONIZATION_CHANGE,onSyncChange);
 			_collectionNode.addEventListener(CollectionNodeEvent.ITEM_RECEIVE,onItemReceive);
 			_collectionNode.addEventListener(CollectionNodeEvent.ITEM_RETRACT,onItemRetract);
+			_collectionNode.addEventListener(CollectionNodeEvent.NODE_DELETE,onNodeDelete);
 		}
 		
 		// ArrayCollection overridden functions
@@ -91,23 +95,21 @@ package afcs.collections
 		
 		override public function addItem(item:Object) : void
 		{
-			var msg:MessageItem = new MessageItem(NODE_NAME,item,IUID(item).uid);
+			var msg:MessageItem = new MessageItem(NODE_NAME,item,UIDUtil.createUID());
 			_collectionNode.publishItem(msg);
 		}
 		
+		// I need to look at how this is implemented on the actual ArrayCollection class
+		// Do I fill in whitespace/overwrite? 
 		override public function addItemAt(item:Object, index:int) : void
 		{
+			//var oldObj:Object = getItemAt(index);
 			
-		}
-		
-		override public function contains(item:Object) : Boolean
-		{
-			return true;	
 		}
 		
 		override public function removeAll() : void
 		{
-			
+			_collectionNode.removeNode(NODE_NAME);
 		}
 		
 		override public function removeItemAt(index:int) : Object
@@ -117,18 +119,49 @@ package afcs.collections
 		
 		override public function setItemAt(item:Object, index:int) : Object
 		{
-			return new Object();
+			var objOldItem:Object = getItemAt(index);
+			var msg:MessageItem = new MessageItem(NODE_NAME,item,this.source[index].itemID);
+			_collectionNode.publishItem(msg,true);
+			
+			return objOldItem;
 		}
 		
 		// CollectionNode-specific event handlers
 		
 		protected function onSyncChange(event:CollectionNodeEvent):void
 		{
-			
+			trace('testing sync');
 		}
 		
 		protected function onItemReceive(event:CollectionNodeEvent):void
 		{
+			// How can we make sure that the server has the same order as the client?
+			var tempObj:Object = new Object();
+				tempObj.itemID = event.item.itemID;
+				tempObj.content = event.item.body;
+				
+			if(!_collectionNode.isSynchronized)
+			{
+				this.source.push(tempObj);
+			} else {
+				// I feel like this is a messy way to do this. Need to revisit.
+				var len:int = this.length;
+				var isOld:Boolean = false;
+				for(var i:int=0; i<len; i++)
+				{
+					if (this.source[i].itemID == tempObj.itemID)
+					{
+						//we have an old item that needs to be updated
+						this.source[i].content = tempObj.content;
+						isOld = true;
+					} 
+				}
+				if( !isOld )
+				{
+					// we have a new item that we need to add
+					this.source.push(tempObj);	
+				}
+			}
 			
 		}
 		
@@ -137,10 +170,16 @@ package afcs.collections
 			
 		}
 		
-		// Helper functions
-		protected function getUniqueID(item:Object):void
+		protected function onNodeDelete(event:CollectionNodeEvent):void
 		{
-			
+			// When we delete the node, we just create a blank array.
+			this.source = new Array();
+		}
+		
+		// Helper functions
+		protected function getUniqueID(item:Object):String
+		{
+			return 'test';
 		}
 	}
 }
