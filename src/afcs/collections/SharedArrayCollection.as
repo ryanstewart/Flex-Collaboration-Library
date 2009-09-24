@@ -47,8 +47,8 @@ package afcs.collections
 	 * Multiple nodes should be added later.
 	 **/
 	public class SharedArrayCollection extends ArrayCollection
-	{
-		[Event(name="collectionChange",type="com.adobe.rtc.events.CollectionNodeEvent")]
+	{	
+		[Event(name="sharedCollectionChange",type="com.adobe.rtc.events.CollectionNodeEvent")]
 		
 		protected var _collectionNode:CollectionNode;
 		protected var _nodeConfig:NodeConfiguration;
@@ -83,8 +83,10 @@ package afcs.collections
 			_collectionNode.addEventListener(CollectionNodeEvent.ITEM_RETRACT,onItemRetract);
 			_collectionNode.addEventListener(CollectionNodeEvent.NODE_DELETE,onNodeDelete);
 		}
-		
-		// ArrayCollection overridden functions
+
+		/**
+		 * ArrayCollection overridden functions
+		 **/
 		/**
 		 * We override the array functions and have them only handle the 
 		 * creation/deletion of messages on the collection node. We'll update
@@ -106,7 +108,7 @@ package afcs.collections
 			//var oldObj:Object = getItemAt(index);
 			
 		}
-		
+
 		override public function removeAll() : void
 		{
 			_collectionNode.removeNode(NODE_NAME);
@@ -114,7 +116,8 @@ package afcs.collections
 		
 		override public function removeItemAt(index:int) : Object
 		{
-			return new Object();
+			_collectionNode.retractItem(NODE_NAME,this.source[index].itemID);
+			return getItemAt(index);
 		}
 		
 		override public function setItemAt(item:Object, index:int) : Object
@@ -126,11 +129,13 @@ package afcs.collections
 			return objOldItem;
 		}
 		
-		// CollectionNode-specific event handlers
+		/**
+		*CollectionNode-specific event handlers
+		 **/
 		
 		protected function onSyncChange(event:CollectionNodeEvent):void
 		{
-			trace('testing sync');
+			//Not sure if anything needs to happen here.
 		}
 		
 		protected function onItemReceive(event:CollectionNodeEvent):void
@@ -162,12 +167,23 @@ package afcs.collections
 					this.source.push(tempObj);	
 				}
 			}
-			
+			dispatchEvent(event);
 		}
 		
 		protected function onItemRetract(event:CollectionNodeEvent):void
 		{
+			var tempObj:Object = new Object();
+			tempObj.itemID = event.item.itemID;
+			tempObj.content = event.item.body;
 			
+			var len:int = this.length;
+			for(var i:int=0; i<len; i++)
+			{
+				if (this.source[i].itemID == tempObj.itemID)
+				{
+					this.removeItemAt(i);
+				} 
+			}
 		}
 		
 		protected function onNodeDelete(event:CollectionNodeEvent):void
